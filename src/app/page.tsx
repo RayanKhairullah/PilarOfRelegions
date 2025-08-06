@@ -1,194 +1,219 @@
 "use client";
 import { useEffect, useState } from "react";
 import { supabase } from "../utils/supabaseClient";
-import type { Siswa, SholatReport } from "../types/sholat";
+import type { SholatReport } from "../types/sholat";
+import Image from "next/image";
 
-const SHOLAT_LIST = [
-  { key: "subuh", label: "Subuh" },
-  { key: "dzuhur", label: "Dzuhur" },
-  { key: "ashar", label: "Ashar" },
-  { key: "maghrib", label: "Maghrib" },
-  { key: "isya", label: "Isya" },
-];
+// Specific types for this page to avoid conflicts
+interface SiswaOption {
+  id: number;
+  nama: string;
+}
+type SholatKeys = 'subuh' | 'dzuhur' | 'ashar' | 'maghrib' | 'isya';
+
+// Helper function to format date to YYYY-MM-DD
+function toISODateString(date: Date): string {
+  const pad = (num: number) => (num < 10 ? '0' + num : num);
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
 
 export default function Home() {
-  const [siswaList, setSiswaList] = useState<Siswa[]>([]);
-  const [selectedId, setSelectedId] = useState<number | null>(null);
-  const [gender, setGender] = useState<string>("");
-  const [todayReport, setTodayReport] = useState<Partial<SholatReport> | null>(null);
+  const [siswaOptions, setSiswaOptions] = useState<SiswaOption[]>([]);
+  const [selectedSiswa, setSelectedSiswa] = useState<string>("");
   const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
-  
-  const [editMode, setEditMode] = useState(false);
-  const [showInfo, setShowInfo] = useState(true);
+  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [sholatReport, setSholatReport] = useState<Partial<SholatReport>>({});
+  const [notification, setNotification] = useState<{message: string, type: 'success' | 'error'} | null>(null);
+  const [fetchingReport, setFetchingReport] = useState(false);
 
-  // Get today's date in YYYY-MM-DD
-  const today = new Date();
-  const todayStr = today.toISOString().slice(0, 10);
+  const sholatTimes: { key: SholatKeys; label: string }[] = [
 
+    { key: "subuh", label: "Subuh" },
+    { key: "dzuhur", label: "Dzuhur" },
+    { key: "ashar", label: "Ashar" },
+    { key: "maghrib", label: "Maghrib" },
+    { key: "isya", label: "Isya" },
+  ];
+
+  // On first load, auto-select last selected siswa if available
   useEffect(() => {
-    // Fetch siswa list
-    supabase.from('siswa').select('*').then(({ data }) => {
-      if (data) setSiswaList(data);
-    });
+    async function fetchSiswa() {
+      const { data } = await supabase.from("siswa").select("id, nama").order('nama', { ascending: true });
+      setSiswaOptions(data as SiswaOption[] || []);
+    }
+    fetchSiswa();
+    const lastSelected = localStorage.getItem('selectedSiswa');
+    if (lastSelected) setSelectedSiswa(lastSelected);
   }, []);
 
   useEffect(() => {
-    if (selectedId) {
-      // Fetch today's report for selected siswa
-      setLoading(true);
-      supabase.from('sholat_reports')
-        .select('*')
-        .eq('siswa_id', selectedId)
-        .eq('tanggal', todayStr)
-        .single()
-        .then(({ data }) => {
-          if (data) {
-            setTodayReport(data);
-            setEditMode(true);
-            setGender(siswaList.find(s => s.id === selectedId)?.gender || "");
-          } else {
-            setTodayReport(null);
-            setEditMode(false);
-            setGender(siswaList.find(s => s.id === selectedId)?.gender || "");
-          }
-          setLoading(false);
-        });
-    } else {
-      setTodayReport(null);
-      setEditMode(false);
-      setGender("");
+    if (notification) {
+      const timer = setTimeout(() => setNotification(null), 3000);
+      return () => clearTimeout(timer);
     }
-  }, [selectedId, siswaList, todayStr]);
+  }, [notification]);
 
-  const handleCheck = (key: string) => {
-    setTodayReport((prev) => ({
-      ...(prev || {}),
-      [key]: !getSholatValue(prev, key),
-    }));
+  // Remember selected siswa in localStorage, fetch report when selectedSiswa changes
+  useEffect(() => {
+    const checkSubmission = async (siswaId: number) => {
+      setFetchingReport(true);
+      const today = toISODateString(new Date());
+      const { data } = await supabase
+        .from("sholat_reports")
+        .select("*")
+        .eq("siswa_id", siswaId)
+        .eq("tanggal", today)
+        .single();
+      if (data) {
+        setIsSubmitted(true);
+        setSholatReport(data);
+      } else {
+        setIsSubmitted(false);
+        setSholatReport({});
+      }
+      setFetchingReport(false);
+    };
+
+    if (selectedSiswa) {
+      localStorage.setItem('selectedSiswa', selectedSiswa);
+      checkSubmission(parseInt(selectedSiswa));
+    } else {
+      setIsSubmitted(false);
+      setSholatReport({});
+    }
+  }, [selectedSiswa]);
+
+  const handleCheckboxChange = (sholat: SholatKeys) => {
+    setSholatReport((prev) => ({ ...prev, [sholat]: !prev[sholat] }));
   };
 
-  // Helper for safe dynamic sholat value access
-  function getSholatValue(obj: Partial<SholatReport> | null | undefined, key: string): boolean {
-    if (!obj) return false;
-    // @ts-expect-error: dynamic key access for sholat fields
-    return !!obj[key];
+  const getSholatValue = (key: SholatKeys) => {
+    return !!sholatReport[key];
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-
-    if (!selectedId) {
-      setLoading(false);
+    if (!selectedSiswa) {
+      setNotification({ message: 'Pilih nama terlebih dahulu.', type: 'error' });
       return;
     }
-    const payload = {
-      siswa_id: selectedId,
-      tanggal: todayStr,
-      ...SHOLAT_LIST.reduce((acc, s) => ({ ...acc, [s.key]: getSholatValue(todayReport, s.key) }), {}),
+
+    setLoading(true);
+    const { ...reportData } = {
+      ...sholatReport,
+      siswa_id: parseInt(selectedSiswa),
+      tanggal: toISODateString(new Date()),
     };
-    let res;
-    if (editMode && todayReport?.id) {
-      res = await supabase.from('sholat_reports').update(payload).eq('id', todayReport.id);
-    } else {
-      res = await supabase.from('sholat_reports').insert(payload);
+
+    try {
+      let res;
+      if (isSubmitted && reportData.id) {
+        res = await supabase.from("sholat_reports").update(reportData).eq("id", reportData.id).select().single();
+      } else {
+        res = await supabase.from("sholat_reports").insert(reportData).select().single();
+      }
+      
+      if (res.error) throw res.error;
+
+      // After submit, always fetch latest report to sync state
+      if(res.data) {
+        setSholatReport(res.data);
+      }
+      setIsSubmitted(true);
+      setNotification({ message: 'Laporan berhasil disimpan!', type: 'success' });
+      // fetch again to ensure latest data
+      if (selectedSiswa) {
+        const today = toISODateString(new Date());
+        const { data } = await supabase
+          .from("sholat_reports")
+          .select("*")
+          .eq("siswa_id", parseInt(selectedSiswa))
+          .eq("tanggal", today)
+          .single();
+        if (data) setSholatReport(data);
+      }
+    } catch (error) {
+      const errMsg = error instanceof Error ? error.message : String(error);
+      console.error("Error submitting sholat report:", error);
+      setNotification({ message: `Gagal menyimpan: ${errMsg}`, type: 'error' });
+    } finally {
+      setLoading(false);
     }
-    if (res.error) {
-    } else {
-      setSuccess(true);
-      setTimeout(() => setSuccess(false), 2000);
-      // Refetch
-      supabase.from('sholat_reports')
-        .select('*')
-        .eq('siswa_id', selectedId)
-        .eq('tanggal', todayStr)
-        .single()
-        .then(({ data }) => setTodayReport(data));
-    }
-    setLoading(false);
   };
 
-  const nameDisabled = !!todayReport;
-
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        {showInfo ? (
-          <div className="card">
-            <h1 className="text-2xl font-bold text-center mb-4">Perhatian!</h1>
-            <ul className="list-disc list-inside space-y-3 mb-6 text-gray-700">
-              <li>Pilih nama <span className="font-bold text-red-600 underline">masing masing</span>!</li>
-              <li><span className="font-bold text-red-600 underline">Jangan memanipulasi</span> data teman lainnya!</li>
-              <li><span className="font-bold text-red-600 underline">Jujur</span> dalam mengisi.</li>
-              <li>Laporan ini digunakan untuk <span className="font-bold">penilaian mulok</span>.</li>
-              <li>Submit laporan <span className="font-bold text-red-600 underline">hanya 1x per hari</span>.</li>
-              <li>Jika ada kesalahan, laporan <span className="font-bold text-red-600 underline">hanya bisa diedit</span> pada hari yang sama.</li>
-            </ul>
-            <button
-              onClick={() => setShowInfo(false)}
-              className="w-full button"
-            >
-              Saya Mengerti & Lanjutkan
-            </button>
-          </div>
-        ) : (
-          <div className="card">
-            <h1 className="text-2xl font-bold text-center mb-1">Laporan Sholat Harian</h1>
-            <p className="text-center text-gray-500 mb-6">Isi laporan sesuai sholat yang dikerjakan.</p>
-            <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
-              <div>
-                <label className="font-semibold mb-2 block">Nama Siswa</label>
-                <select
-                  value={selectedId ?? ""}
-                  onChange={e => setSelectedId(Number(e.target.value) || null)}
-                  disabled={nameDisabled}
-                  required
-                >
-                  <option value="">Pilih nama</option>
-                  {siswaList.map(s => (
-                    <option key={s.id} value={s.id}>{s.nama}</option>
-                  ))}
-                </select>
-                {gender && <p className="text-sm text-gray-500 mt-2">Gender: {gender === 'L' ? 'Laki-laki' : 'Perempuan'}</p>}
-              </div>
+    <main className="flex min-h-screen flex-col items-center justify-center p-4 sm:p-8 md:p-12 bg-gray-50">
+      {notification && (
+        <div className={`fixed top-5 right-5 p-4 rounded-md text-white z-50 ${notification.type === 'success' ? 'bg-green-500' : 'bg-red-500'} animate-fade-in-fast`}>
+          {notification.message}
+        </div>
+      )}
 
-              <div className="mt-2">
-                <label className="font-semibold mb-2 block">Sholat yang dikerjakan hari ini:</label>
-                <div className="grid grid-cols-2 gap-3">
-                  {SHOLAT_LIST.map(s => (
-                    <label key={s.key} className="flex items-center gap-3 p-3 border rounded-lg hover:bg-gray-50 transition-colors">
-                      <input
-                        type="checkbox"
-                        className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                        checked={getSholatValue(todayReport, s.key)}
-                        onChange={() => handleCheck(s.key)}
-                        disabled={!selectedId}
-                      />
-                      <span>{s.label}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
+      <div className="w-full max-w-2xl mx-auto">
+        <div className="text-center mb-8">
+          <Image src="/logo.png" alt="Logo" width={60} height={60} className="mx-auto mb-4" />
+          <h1 className="text-3xl font-bold text-gray-800">Laporan Sholat Harian</h1>
+          <p className="text-gray-500 mt-2">Silakan isi laporan sholat wajib harian Anda.</p>
+        </div>
 
-              
-              {success && <div className="text-green-600 text-sm font-medium p-3 bg-green-50 rounded-md">Tersimpan!</div>}
+        <div className="card mb-6">
+          <h2 className="font-semibold text-lg text-gray-700 mb-2">Perhatian & Aturan</h2>
+          <ul className="list-disc list-inside text-gray-600 space-y-1">
+            <li>Laporan hanya bisa diisi <span className="font-semibold">satu kali</span> setiap hari.</li>
+            <li>Jika sudah mengirim, Anda masih bisa <span className="font-semibold">mengubah</span> laporan di hari yang sama.</li>
+            <li>Pilih nama Anda, lalu centang sholat yang sudah dilaksanakan.</li>
+            <li>Klik tombol &quot;Kirim Laporan&quot; untuk menyimpan.</li>
+          </ul>
+        </div>
 
-              <button
-                type="submit"
-                className="w-full bg-blue-600 disabled:bg-gray-400 mt-4 p-2 button"
-                disabled={loading || !selectedId}
-              >
-                {loading ? 'Menyimpan...' : (editMode ? 'Update Laporan' : 'Submit')}
-              </button>
-
-              {nameDisabled && (
-                <p className="text-xs text-center text-gray-500 mt-2">Nama tidak bisa diubah setelah submit hari ini. Jika salah isi, silakan edit laporan.</p>
-              )}
-            </form>
+        {fetchingReport && selectedSiswa && (
+          <div className="w-full flex justify-center items-center mb-4">
+            <span className="text-blue-500 text-sm">Mengambil data laporan...</span>
           </div>
         )}
+
+        <form onSubmit={handleSubmit} className="card">
+          <div className="mb-6">
+            <label htmlFor="siswa" className="block text-sm font-medium text-gray-700 mb-2">Nama Lengkap</label>
+            <select
+              id="siswa"
+              value={selectedSiswa}
+              onChange={(e) => setSelectedSiswa(e.target.value)}
+              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
+              disabled={isSubmitted}
+            >
+              <option value="" disabled>-- Pilih Nama --</option>
+              {siswaOptions.map((s) => (
+                <option key={s.id} value={s.id}>{s.nama}</option>
+              ))}
+            </select>
+            {isSubmitted && <p className="text-sm text-blue-600 mt-2">Anda sudah mengirim laporan hari ini. Anda hanya bisa mengedit.</p>}
+          </div>
+
+          {selectedSiswa && (
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-3">Sholat yang Dilaksanakan</label>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+                {sholatTimes.map(({ key, label }) => (
+                  <label key={key} className="flex items-center gap-2 text-gray-700 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={getSholatValue(key)}
+                      onChange={() => handleCheckboxChange(key)}
+                      className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    {label}
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <button type="submit" className="button w-full" disabled={loading || !selectedSiswa}>
+            {loading ? 'Menyimpan...' : (isSubmitted ? 'Update Laporan' : 'Kirim Laporan')}
+          </button>
+        </form>
       </div>
-    </div>
+    </main>
   );
 }

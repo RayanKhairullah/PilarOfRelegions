@@ -9,7 +9,7 @@ export interface Siswa {
 export interface SholatReport {
   id: number;
   siswa_id: number;
-  tanggal: string; // YYYY-MM-DD
+  tanggal: string;
   subuh: boolean;
   dzuhur: boolean;
   ashar: boolean;
@@ -17,5 +17,4 @@ export interface SholatReport {
   isya: boolean;
   updated_at: string;
   siswa?: Siswa;
-  // [key: string]: string | number | boolean | undefined; // Removed to fix TS error
 }

@@ -8,10 +8,11 @@ Aplikasi web yang dirancang untuk memantau dan melaporkan kegiatan sholat harian
 - **Notifikasi & Aturan:** Menampilkan pemberitahuan dengan aturan yang jelas sebelum siswa dapat mengisi formulir.
 - **Validasi Unik Harian:** Siswa hanya dapat mengirimkan satu laporan per hari, namun dapat mengeditnya pada hari yang sama jika terjadi kesalahan.
 - **Dashboard Admin:**
-  - Login yang aman untuk administrator.
-  - Tampilan data laporan sholat dalam bentuk tabel yang rapi dan mudah dibaca.
-  - Kemampuan untuk memfilter laporan berdasarkan gender, tanggal spesifik, minggu, dan bulan.
-  - Fungsi untuk mengekspor data yang telah difilter ke dalam format file Excel (.xlsx).
+  - Login aman untuk administrator.
+  - Tabel laporan sholat modern, responsif, dan mudah dibaca.
+  - Filter laporan berdasarkan gender, tanggal, minggu, dan bulan.
+  - Export laporan ke file Excel (.xlsx) dengan tampilan profesional (warna header, border, centang/❌, lebar kolom otomatis).
+  - UI/UX dashboard dipoles: modal animasi, tombol modern, loading spinner, notifikasi, dan desain responsif.
 - **Manajemen Data Siswa:**
   - Skrip untuk mengimpor data siswa dari file CSV langsung ke database Supabase.
 
@@ -20,9 +21,22 @@ Aplikasi web yang dirancang untuk memantau dan melaporkan kegiatan sholat harian
 - **Framework:** [Next.js](https://nextjs.org/) (React)
 - **Database & Backend:** [Supabase](https://supabase.io/)
 - **Styling:** [Tailwind CSS](https://tailwindcss.com/)
-- **Excel Export:** [SheetJS (xlsx)](https://sheetjs.com/)
+- **Excel Export:** [xlsx-js-style](https://github.com/protobi/js-xlsx) (SheetJS fork, mendukung styling)
 
 ---
+
+## Fitur Teknis & Best Practice
+
+- **Formulir Siswa:**
+  - Nama terakhir otomatis terpilih (localStorage), form selalu fetch data terbaru dari Supabase setiap refresh atau ganti nama.
+  - Loading spinner saat fetch data laporan.
+  - State form tetap konsisten setelah submit dan refresh, sesuai best practice.
+- **Code Quality:**
+  - Kode sudah bebas lint error dan warning (ESLint, TypeScript clean).
+  - Struktur komponen dan tipe data rapi.
+- **Export Excel:**
+  - File hasil export sudah otomatis berwarna, border, centang/❌, dan lebar kolom proporsional.
+  - Menggunakan `xlsx-js-style` untuk styling maksimal.
 
 ## Panduan Instalasi & Setup
 
@@ -40,6 +54,8 @@ cd sholatapps
 
 ```bash
 npm install
+# Untuk styling export Excel, pastikan juga:
+npm install xlsx-js-style
 ```
 
 ### 3. Setup Environment Variables
@@ -79,3 +95,9 @@ npm run dev
 ```
 
 Buka [http://localhost:3000](http://localhost:3000) di browser Anda untuk melihat hasilnya.
+
+---
+
+## Catatan
+- Untuk hasil export Excel yang full styling, gunakan aplikasi Excel modern atau Google Sheets.
+- Jika ingin kontribusi atau menemukan bug, silakan open issue atau pull request!

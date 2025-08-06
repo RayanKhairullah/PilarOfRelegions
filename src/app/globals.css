@@ -12,6 +12,39 @@
   }
 }
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@layer components {
+  .button {
+    @apply bg-blue-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-blue-700 transition-colors flex items-center justify-center gap-2;
+  }
+  .button-primary {
+    @apply bg-blue-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-blue-700 transition-colors flex items-center justify-center gap-2;
+  }
+  .button-secondary {
+    @apply bg-transparent border border-gray-300 text-gray-700 font-semibold py-2 px-4 rounded-md hover:bg-gray-100 transition-colors flex items-center justify-center gap-2;
+  }
+  .button-danger {
+    @apply bg-red-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-red-700 transition-colors;
+  }
+  .button-icon {
+    @apply p-2 rounded-md hover:bg-gray-200 transition-colors;
+  }
+  .button-icon-danger {
+    @apply p-2 rounded-md text-red-500 hover:bg-red-100 transition-colors;
+  }
+  .card {
+    @apply bg-white p-6 rounded-lg shadow-sm;
+  }
+  input[type="text"], input[type="email"], input[type="password"], input[type="date"], input[type="week"], input[type="month"], select {
+    @apply w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500;
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.animate-fade-in-fast {
+  animation: fadeIn 0.2s ease-out forwards;
+}
+
