@@ -1,16 +1,10 @@
 "use client";
 import { useEffect, useState } from "react";
 import { supabase } from "@/utils/supabaseClient";
-import { SholatReport, Siswa } from "@/types/sholat";
+import { SholatReport } from "@/types/sholat";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import * as XLSX from "xlsx";
-
-const GENDER_OPTIONS = [
-  { value: "", label: "Semua" },
-  { value: "L", label: "Laki-laki" },
-  { value: "P", label: "Perempuan" },
-];
 
 function toISODateString(date: Date): string {
   const year = date.getFullYear();
@@ -36,9 +30,7 @@ function getWeekRange(weekString: string) {
 
 export default function AdminDashboard() {
   const router = useRouter();
-  const [user, setUser] = useState<any>(null);
   const [reports, setReports] = useState<SholatReport[]>([]);
-  const [siswaList, setSiswaList] = useState<Siswa[]>([]);
   const [gender, setGender] = useState("");
   const [date, setDate] = useState("");
   const [week, setWeek] = useState("");
@@ -49,25 +41,15 @@ export default function AdminDashboard() {
     supabase.auth.getUser().then(({ data }) => {
       if (!data.user) {
         router.push("/login");
-      } else {
-        setUser(data.user);
       }
+
     });
   }, [router]);
-
-  useEffect(() => {
-    fetchSiswa();
-  }, []);
 
   useEffect(() => {
     fetchReports();
     // eslint-disable-next-line
   }, [gender, date, week, month]);
-
-  async function fetchSiswa() {
-    const { data } = await supabase.from("siswa").select("*");
-    setSiswaList(data || []);
-  }
 
   async function fetchReports() {
     setLoading(true);

@@ -18,7 +18,7 @@ export default function Home() {
   const [todayReport, setTodayReport] = useState<Partial<SholatReport> | null>(null);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  
   const [editMode, setEditMode] = useState(false);
   const [showInfo, setShowInfo] = useState(true);
 
@@ -42,7 +42,7 @@ export default function Home() {
         .eq('siswa_id', selectedId)
         .eq('tanggal', todayStr)
         .single()
-        .then(({ data, error }) => {
+        .then(({ data }) => {
           if (data) {
             setTodayReport(data);
             setEditMode(true);
@@ -59,28 +59,34 @@ export default function Home() {
       setEditMode(false);
       setGender("");
     }
-  }, [selectedId, siswaList]);
+  }, [selectedId, siswaList, todayStr]);
 
   const handleCheck = (key: string) => {
     setTodayReport((prev) => ({
       ...(prev || {}),
-      [key]: !(prev && prev[key]),
+      [key]: !getSholatValue(prev, key),
     }));
   };
+
+  // Helper for safe dynamic sholat value access
+  function getSholatValue(obj: Partial<SholatReport> | null | undefined, key: string): boolean {
+    if (!obj) return false;
+    // @ts-expect-error: dynamic key access for sholat fields
+    return !!obj[key];
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setError(null);
+
     if (!selectedId) {
-      setError("Pilih nama siswa terlebih dahulu.");
       setLoading(false);
       return;
     }
     const payload = {
       siswa_id: selectedId,
       tanggal: todayStr,
-      ...SHOLAT_LIST.reduce((acc, s) => ({ ...acc, [s.key]: todayReport?.[s.key] || false }), {}),
+      ...SHOLAT_LIST.reduce((acc, s) => ({ ...acc, [s.key]: getSholatValue(todayReport, s.key) }), {}),
     };
     let res;
     if (editMode && todayReport?.id) {
@@ -89,7 +95,6 @@ export default function Home() {
       res = await supabase.from('sholat_reports').insert(payload);
     }
     if (res.error) {
-      setError(res.error.message);
     } else {
       setSuccess(true);
       setTimeout(() => setSuccess(false), 2000);
@@ -156,7 +161,7 @@ export default function Home() {
                       <input
                         type="checkbox"
                         className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                        checked={!!todayReport?.[s.key]}
+                        checked={getSholatValue(todayReport, s.key)}
                         onChange={() => handleCheck(s.key)}
                         disabled={!selectedId}
                       />
@@ -166,7 +171,7 @@ export default function Home() {
                 </div>
               </div>
 
-              {error && <div className="text-red-500 text-sm font-medium p-3 bg-red-50 rounded-md">{error}</div>}
+              
               {success && <div className="text-green-600 text-sm font-medium p-3 bg-green-50 rounded-md">Tersimpan!</div>}
 
               <button

@@ -17,5 +17,5 @@ export interface SholatReport {
   isya: boolean;
   updated_at: string;
   siswa?: Siswa;
-  [key: string]: any; // Allow string key access for dynamic sholat fields
+  // [key: string]: string | number | boolean | undefined; // Removed to fix TS error
 }
