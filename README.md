@@ -1,36 +1,81 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Sistem Pelaporan Sholat Siswa
 
-## Getting Started
+Aplikasi web yang dirancang untuk memantau dan melaporkan kegiatan sholat harian siswa secara efisien. Proyek ini dibangun menggunakan Next.js, Supabase, dan Tailwind CSS.
 
-First, run the development server:
+## Fitur Utama
+
+- **Formulir Laporan Siswa:** Antarmuka yang bersih dan sederhana bagi siswa untuk mengirimkan laporan sholat harian.
+- **Notifikasi & Aturan:** Menampilkan pemberitahuan dengan aturan yang jelas sebelum siswa dapat mengisi formulir.
+- **Validasi Unik Harian:** Siswa hanya dapat mengirimkan satu laporan per hari, namun dapat mengeditnya pada hari yang sama jika terjadi kesalahan.
+- **Dashboard Admin:**
+  - Login yang aman untuk administrator.
+  - Tampilan data laporan sholat dalam bentuk tabel yang rapi dan mudah dibaca.
+  - Kemampuan untuk memfilter laporan berdasarkan gender, tanggal spesifik, minggu, dan bulan.
+  - Fungsi untuk mengekspor data yang telah difilter ke dalam format file Excel (.xlsx).
+- **Manajemen Data Siswa:**
+  - Skrip untuk mengimpor data siswa dari file CSV langsung ke database Supabase.
+
+## Teknologi yang Digunakan
+
+- **Framework:** [Next.js](https://nextjs.org/) (React)
+- **Database & Backend:** [Supabase](https://supabase.io/)
+- **Styling:** [Tailwind CSS](https://tailwindcss.com/)
+- **Excel Export:** [SheetJS (xlsx)](https://sheetjs.com/)
+
+---
+
+## Panduan Instalasi & Setup
+
+Untuk menjalankan proyek ini di lingkungan lokal Anda, ikuti langkah-langkah berikut:
+
+### 1. Clone Repository
+
+```bash
+# Ganti 'your-username' dengan username GitHub Anda
+git clone https://github.com/your-username/sholatapps.git
+cd sholatapps
+```
+
+### 2. Install Dependencies
+
+```bash
+npm install
+```
+
+### 3. Setup Environment Variables
+
+Buat file baru bernama `.env` di root direktori proyek. Salin konten di bawah ini ke dalam file tersebut dan isi dengan kredensial Supabase Anda.
+
+```env
+# Kredensial Supabase - Anda dapat menemukannya di Pengaturan Proyek > API
+NEXT_PUBLIC_SUPABASE_URL=URL_PROYEK_SUPABASE_ANDA
+NEXT_PUBLIC_SUPABASE_ANON_KEY=KUNCI_ANON_PUBLIK_SUPABASE_ANDA
+```
+
+### 4. Setup Database
+
+Pastikan Anda telah menginstal [Supabase CLI](https://supabase.com/docs/guides/cli) dan login.
+
+**a. Jalankan Migrasi Database:**
+Perintah ini akan membuat tabel `siswa` dan `sholat_reports` di database lokal Anda.
+
+```bash
+supabase db reset
+```
+
+**b. Seed Data Siswa:**
+Perintah ini akan mengisi tabel `siswa` dengan data dari file CSV.
+
+```bash
+node scripts/import_siswa.js "Daftar Absen Kelas X - Sheet1.csv"
+```
+
+### 5. Jalankan Aplikasi
+
+Setelah semua langkah di atas selesai, jalankan server pengembangan:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Buka [http://localhost:3000](http://localhost:3000) di browser Anda untuk melihat hasilnya.
