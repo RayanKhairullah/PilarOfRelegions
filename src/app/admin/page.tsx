@@ -207,7 +207,16 @@ export default function AdminDashboard() {
     { key: 'isya', label: 'Isya' },
   ];
 
+  // Pagination state
+  const [page, setPage] = useState(1);
+  const rowsPerPage = 10;
   const filteredReports = reports.filter(r => r.siswa);
+  const totalRows = filteredReports.length;
+  const totalPages = Math.ceil(totalRows / rowsPerPage) || 1;
+  const paginatedReports = filteredReports.slice((page - 1) * rowsPerPage, page * rowsPerPage);
+
+  // Reset page to 1 if filter changes
+  useEffect(() => { setPage(1); }, [gender, date, week, month]);
 
   return (
     <div className="min-h-screen p-4 sm:p-6 lg:p-8 bg-gray-50">
@@ -431,7 +440,7 @@ export default function AdminDashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredReports.length > 0 ? filteredReports.map((report) => (
+                  {paginatedReports.length > 0 ? paginatedReports.map((report) => (
                     <tr key={report.id} className="bg-white border-b hover:bg-gray-50">
                       <td className="px-4 py-3 font-medium text-gray-900">{report.tanggal}</td>
                       <th scope="row" className="px-4 py-3 font-medium text-gray-900">{report.siswa?.nama}</th>
@@ -490,6 +499,27 @@ export default function AdminDashboard() {
                   )}
                 </tbody>
               </table>
+              {/* Pagination Controls */}
+              <div className="flex flex-col sm:flex-row justify-between items-center gap-2 px-4 py-3 border-t bg-gray-50">
+                <div className="text-sm text-gray-600 mb-2 sm:mb-0">
+                  {totalRows > 0
+                    ? `Menampilkan ${(page-1)*rowsPerPage+1}–${Math.min(page*rowsPerPage, totalRows)} dari ${totalRows} data`
+                    : 'Tidak ada data'}
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    className="px-3 py-1 rounded bg-gray-200 hover:bg-gray-300 disabled:opacity-50"
+                    onClick={() => setPage(p => Math.max(1, p-1))}
+                    disabled={page === 1}
+                  >Sebelumnya</button>
+                  <span className="text-gray-700 px-2">Halaman {page} / {totalPages}</span>
+                  <button
+                    className="px-3 py-1 rounded bg-gray-200 hover:bg-gray-300 disabled:opacity-50"
+                    onClick={() => setPage(p => Math.min(totalPages, p+1))}
+                    disabled={page === totalPages}
+                  >Berikutnya</button>
+                </div>
+              </div>
             </div>
           )}
         </div>
