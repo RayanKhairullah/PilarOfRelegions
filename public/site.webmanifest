@@ -1,0 +1,16 @@
+{
+  "name": "Laporan Sholat Siswa",
+  "short_name": "Sholat",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f7f7f7",
+  "theme_color": "#2563eb",
+  "icons": [
+    {
+      "src": "/logo.svg",
+      "sizes": "512x512",
+      "type": "image/svg",
+      "purpose": "any maskable"
+    }
+  ]
+}

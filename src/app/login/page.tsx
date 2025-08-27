@@ -28,7 +28,7 @@ export default function LoginPage() {
       <div className="w-full max-w-sm">
         <div className="card">
           <h1 className="text-2xl font-bold text-center mb-1">Admin Login</h1>
-          <p className="text-center text-gray-500 mb-6">Akses dashboard laporan sholat.</p>
+          <p className="text-center text-gray-700 dark:text-neutral-300 mb-6">Akses dashboard laporan sholat.</p>
           <form onSubmit={handleLogin} className="flex flex-col gap-4">
             <div>
               <label className="font-semibold mb-2 block">Email</label>
@@ -50,7 +50,7 @@ export default function LoginPage() {
                 required
               />
             </div>
-            {error && <p className="text-red-500 text-sm font-medium p-3 bg-red-50 rounded-md">Error: {error}</p>}
+            {error && <p className="text-red-500 dark:text-red-300 text-sm font-medium p-3 bg-red-50 dark:bg-red-900/30 rounded-md">Error: {error}</p>}
             <button type="submit" className="w-full mt-4 button" disabled={loading}>
               {loading ? "Logging in..." : "Login"}
             </button>

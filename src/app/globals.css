@@ -20,22 +20,22 @@
     @apply bg-blue-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-blue-700 transition-colors flex items-center justify-center gap-2;
   }
   .button-secondary {
-    @apply bg-transparent border border-gray-300 text-gray-700 font-semibold py-2 px-4 rounded-md hover:bg-gray-100 transition-colors flex items-center justify-center gap-2;
+    @apply bg-transparent border border-gray-300 text-gray-700 font-semibold py-2 px-4 rounded-md hover:bg-gray-100 transition-colors flex items-center justify-center gap-2 dark:border-neutral-700 dark:text-neutral-200 dark:hover:bg-neutral-800;
   }
   .button-danger {
     @apply bg-red-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-red-700 transition-colors;
   }
   .button-icon {
-    @apply p-2 rounded-md hover:bg-gray-200 transition-colors;
+    @apply p-2 rounded-md hover:bg-gray-200 transition-colors dark:hover:bg-neutral-800;
   }
   .button-icon-danger {
-    @apply p-2 rounded-md text-red-500 hover:bg-red-100 transition-colors;
+    @apply p-2 rounded-md text-red-500 hover:bg-red-100 transition-colors dark:hover:bg-red-900/20;
   }
   .card {
-    @apply bg-white p-6 rounded-lg shadow-sm;
+    @apply bg-white p-6 rounded-lg shadow-sm dark:bg-neutral-800 dark:text-neutral-100;
   }
   input[type="text"], input[type="email"], input[type="password"], input[type="date"], input[type="week"], input[type="month"], select {
-    @apply w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500;
+    @apply w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-neutral-800 dark:border-neutral-700 dark:text-neutral-100 placeholder:dark:text-neutral-400;
   }
 }
 

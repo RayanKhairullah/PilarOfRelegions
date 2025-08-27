@@ -8,8 +8,12 @@ export const metadata: Metadata = {
   title: "Laporan Sholat Siswa",
   description: "Sistem pelaporan sholat harian siswa",
   icons: {
-    icon: "/logo.png",
+    icon: [
+      { url: "/logo.svg", sizes: "512x512", type: "image/svg" },
+    ],
+    apple: "/logo.svg",
   },
+  manifest: "/site.webmanifest",
 };
 
 export default function RootLayout({
@@ -18,8 +22,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="id">
-      <body className={`${inter.className} bg-gray-50`}>{children}</body>
+    <html lang="id" className="dark">
+      <body className={`${inter.className} bg-neutral-900 text-neutral-100`}>{children}</body>
     </html>
   );
 }

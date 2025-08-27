@@ -5,49 +5,11 @@ import { SholatReport, Siswa } from "@/types/sholat";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Plus, Download, Edit, Trash2 } from 'lucide-react';
-import { utils, writeFile } from 'xlsx-js-style';
-
-function toISODateString(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
-
-function getWeekRange(weekString: string) {
-  if (!weekString) return { start: '', end: '' };
-  
-  const [year, week] = weekString.split('-W').map(Number);
-  if (isNaN(year) || isNaN(week)) return { start: '', end: '' };
-
-  const start = new Date(year, 0, 1 + (week - 1) * 7);
-  while (start.getDay() !== 0) {
-    start.setDate(start.getDate() - 1);
-  }
-  
-  const end = new Date(start);
-  end.setDate(end.getDate() + 6);
-
-  return {
-    start: toISODateString(start),
-    end: toISODateString(end)
-  };
-}
-
-function getMonthRange(monthString: string) {
-  if (!monthString) return { start: '', end: '' };
-  
-  const [year, month] = monthString.split('-').map(Number);
-  if (isNaN(year) || isNaN(month)) return { start: '', end: '' };
-  
-  const start = new Date(year, month - 1, 1);
-  const end = new Date(year, month, 0);
-  
-  return {
-    start: toISODateString(start),
-    end: toISODateString(end)
-  };
-}
+import { writeFile } from 'xlsx-js-style';
+import { toISODateString, getWeekRange, getMonthRange } from "@/utils/date";
+import { buildExportWorkbook } from "@/utils/exportReports";
+import FilterBar from "./components/FilterBar";
+import ReportTable from "./components/ReportTable";
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -67,6 +29,17 @@ export default function AdminDashboard() {
   const [week, setWeek] = useState("");
   const [month, setMonth] = useState("");
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [searchInput, setSearchInput] = useState("");
+  // Debounced filter input states to reduce request frequency
+  const [genderInput, setGenderInput] = useState("");
+  const [dateInput, setDateInput] = useState("");
+  const [weekInput, setWeekInput] = useState("");
+  const [monthInput, setMonthInput] = useState("");
+  // Custom create mode state
+  const [customMode, setCustomMode] = useState(false);
+  const [customCount, setCustomCount] = useState<number>(1);
+  const [customStart, setCustomStart] = useState<string>("");
 
   // Perbaikan: Gunakan useCallback untuk fetchReports
   const fetchReports = useCallback(async () => {
@@ -74,6 +47,7 @@ export default function AdminDashboard() {
     let query = supabase.from("sholat_reports").select("*, siswa(*)");
     
     if (gender) query = query.eq("siswa.gender", gender);
+    if (search) query = query.ilike("siswa.nama", `%${search}%`);
     
     if (date) {
       query = query.eq("tanggal", date);
@@ -94,7 +68,7 @@ export default function AdminDashboard() {
     const { data } = await query.order("tanggal", { ascending: false });
     setReports(data || []);
     setLoading(false);
-  }, [gender, date, week, month]);
+  }, [gender, date, week, month, search]);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -119,83 +93,55 @@ export default function AdminDashboard() {
     fetchReports();
   }, [fetchReports]);
 
-  function handleExport() {
-    let filename = "laporan-sholat";
-    if (gender) filename += `_${gender === 'L' ? 'Laki' : 'Perempuan'}`;
-    if (date) filename += `_harian-${date}`;
-    if (week) filename += `_mingguan-${week}`;
-    if (month) filename += `_bulanan-${month}`;
-    
-    const exportData = reports.filter(r => r.siswa).map(r => ({
-      Nama: r.siswa?.nama,
-      Gender: r.siswa?.gender === 'L' ? 'Laki-laki' : 'Perempuan',
-      Tanggal: r.tanggal,
-      Subuh: r.subuh ? "✅" : "❌",
-      Dzuhur: r.dzuhur ? "✅" : "❌",
-      Ashar: r.ashar ? "✅" : "❌",
-      Maghrib: r.maghrib ? "✅" : "❌",
-      Isya: r.isya ? "✅" : "❌",
-    }));
-    
-    const headerStyle = {
-      font: { bold: true, color: { rgb: "FFFFFF" } },
-      fill: { fgColor: { rgb: "4F81BD" } },
-      alignment: { horizontal: "center", vertical: "center" },
-      border: {
-        top: { style: "thin", color: { rgb: "000000" } },
-        bottom: { style: "thin", color: { rgb: "000000" } },
-        left: { style: "thin", color: { rgb: "000000" } },
-        right: { style: "thin", color: { rgb: "000000" } }
-      }
-    };
-    
-    const dataStyle = {
-      border: {
-        top: { style: "thin", color: { rgb: "D3D3D3" } },
-        bottom: { style: "thin", color: { rgb: "D3D3D3" } },
-        left: { style: "thin", color: { rgb: "D3D3D3" } },
-        right: { style: "thin", color: { rgb: "D3D3D3" } }
-      }
-    };
-    
-    const checkStyle = {
-      font: { color: { rgb: "00AA00" }, bold: true },
-      alignment: { horizontal: "center" }
-    };
-    
-    const wb = utils.book_new();
-    
-    const wsData = [
-      Object.keys(exportData[0] || {}).map(key => ({
-        v: key,
-        t: "s",
-        s: headerStyle
-      })),
-      
-      ...exportData.map(row => [
-        { v: row.Nama, t: "s", s: dataStyle },
-        { v: row.Gender, t: "s", s: dataStyle },
-        { v: row.Tanggal, t: "s", s: dataStyle },
-        { v: row.Subuh, t: "s", s: { ...dataStyle, ...checkStyle } },
-        { v: row.Dzuhur, t: "s", s: { ...dataStyle, ...checkStyle } },
-        { v: row.Ashar, t: "s", s: { ...dataStyle, ...checkStyle } },
-        { v: row.Maghrib, t: "s", s: { ...dataStyle, ...checkStyle } },
-        { v: row.Isya, t: "s", s: { ...dataStyle, ...checkStyle } },
-      ])
-    ];
-    
-    const ws = utils.aoa_to_sheet(wsData);
-    
-    const colWidths = [
-      { wch: 25 },
-      { wch: 12 },
-      { wch: 15 },
-      ...Array(5).fill({ wch: 10 })
-    ];
-    ws['!cols'] = colWidths;
-    
-    utils.book_append_sheet(wb, ws, "Laporan Sholat");
-    
+  // Debounce search input -> update effective search after delay
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setSearch(searchInput);
+    }, 400);
+    return () => clearTimeout(handler);
+  }, [searchInput]);
+
+  // Debounce other filters (gender, date, week, month)
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setGender(genderInput);
+      setDate(dateInput);
+      setWeek(weekInput);
+      setMonth(monthInput);
+    }, 400);
+    return () => clearTimeout(handler);
+  }, [genderInput, dateInput, weekInput, monthInput]);
+
+  const clearTanggal = () => {
+    setDate(""); setWeek(""); setMonth("");
+    setDateInput(""); setWeekInput(""); setMonthInput("");
+  };
+
+  async function handleExport() {
+    // Create fresh query with same filters as fetchReports for accurate export data
+    let query = supabase.from("sholat_reports").select("*, siswa(*)");
+    if (gender) query = query.eq("siswa.gender", gender);
+    if (search) query = query.ilike("siswa.nama", `%${search}%`);
+    if (date) query = query.eq("tanggal", date);
+    if (week) {
+      const { start, end } = getWeekRange(week);
+      if (start && end) query = query.gte("tanggal", start).lte("tanggal", end);
+    }
+    if (month) {
+      const { start, end } = getMonthRange(month);
+      if (start && end) query = query.gte("tanggal", start).lte("tanggal", end);
+    }
+
+    const { data: exportReports } = await query.order("tanggal", { ascending: false });
+    if (!exportReports || exportReports.length === 0) {
+      setNotification({ message: 'Tidak ada data untuk diekspor dengan filter yang dipilih.', type: 'error' });
+      return;
+    }
+
+    const { wb, filename } = buildExportWorkbook({
+      exportReports,
+      filters: { gender, date, week, month },
+    });
     writeFile(wb, `${filename}.xlsx`);
   }
 
@@ -209,17 +155,17 @@ export default function AdminDashboard() {
 
   // Pagination state
   const [page, setPage] = useState(1);
-  const rowsPerPage = 10;
+  const rowsPerPage = 30;
   const filteredReports = reports.filter(r => r.siswa);
   const totalRows = filteredReports.length;
   const totalPages = Math.ceil(totalRows / rowsPerPage) || 1;
   const paginatedReports = filteredReports.slice((page - 1) * rowsPerPage, page * rowsPerPage);
 
   // Reset page to 1 if filter changes
-  useEffect(() => { setPage(1); }, [gender, date, week, month]);
+  useEffect(() => { setPage(1); }, [gender, date, week, month, search]);
 
   return (
-    <div className="min-h-screen p-4 sm:p-6 lg:p-8 bg-gray-50">
+    <div className="min-h-screen p-4 sm:p-6 lg:p-8 bg-white dark:bg-neutral-900 dark:text-neutral-100">
       {notification && (
         <div className={`fixed top-5 right-5 p-4 rounded-md text-white z-[100] ${notification.type === 'success' ? 'bg-green-500' : 'bg-red-500'} animate-fade-in-fast`}>
           {notification.message}
@@ -229,11 +175,11 @@ export default function AdminDashboard() {
       <div className="max-w-7xl mx-auto">
         {deleteModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 animate-fade-in-fast">
-            <div className="bg-white p-6 rounded-md shadow-lg w-full max-w-sm">
+            <div className="bg-white dark:bg-neutral-800 p-6 rounded-md shadow-lg w-full max-w-sm">
               <h2 className="text-xl font-semibold mb-2">Hapus Laporan?</h2>
-              <p className="text-gray-600 mb-6">Tindakan ini tidak dapat dibatalkan.</p>
+              <p className="text-gray-600 dark:text-neutral-300 mb-6">Tindakan ini tidak dapat dibatalkan.</p>
               <div className="flex justify-end gap-3">
-                <button onClick={() => setDeleteModalOpen(false)} className="px-4 py-2 bg-gray-200 rounded-md hover:bg-gray-300 transition">Batal</button>
+                <button onClick={() => setDeleteModalOpen(false)} className="px-4 py-2 bg-gray-200 dark:bg-neutral-700 dark:text-neutral-100 rounded-md hover:bg-gray-300 dark:hover:bg-neutral-600 transition">Batal</button>
                 <button 
                   onClick={async () => {
                     if(deleteTargetId) {
@@ -256,33 +202,68 @@ export default function AdminDashboard() {
 
         {modalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 animate-fade-in-fast">
-            <div className="bg-white p-6 rounded-md shadow-lg w-full max-w-md relative">
-              <button className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 text-xl" onClick={()=>setModalOpen(false)}>&times;</button>
+            <div className="bg-white dark:bg-neutral-800 p-6 rounded-md shadow-lg w-full max-w-md relative">
+              <button className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 dark:text-neutral-400 dark:hover:text-neutral-200 text-xl" onClick={()=>setModalOpen(false)}>&times;</button>
               <h2 className="text-xl font-semibold mb-4">{formEditId ? 'Edit' : 'Buat'} Laporan Sholat</h2>
               <form
                 onSubmit={async (e) => {
                   e.preventDefault();
                   setFormLoading(true);
                   setFormError(null);
-                  if (!form.siswa_id || !form.tanggal) {
-                    setFormError('Nama siswa dan tanggal wajib diisi');
+                  let res;
+                  if (!form.siswa_id) {
+                    setFormError('Nama siswa wajib diisi');
                     setFormLoading(false);
                     return;
                   }
-                  const payload = {
-                    siswa_id: form.siswa_id,
-                    tanggal: form.tanggal,
-                    subuh: !!form.subuh,
-                    dzuhur: !!form.dzuhur,
-                    ashar: !!form.ashar,
-                    maghrib: !!form.maghrib,
-                    isya: !!form.isya,
-                  };
-                  let res;
-                  if (formEditId) {
-                    res = await supabase.from('sholat_reports').update(payload).eq('id', formEditId);
+                  if (!formEditId && customMode) {
+                    // Custom bulk insert path
+                    if (!customStart) {
+                      setFormError('Tanggal mulai wajib diisi untuk mode custom');
+                      setFormLoading(false);
+                      return;
+                    }
+                    if (customCount < 1 || customCount > 7) {
+                      setFormError('Jumlah laporan harus antara 1 hingga 7');
+                      setFormLoading(false);
+                      return;
+                    }
+                    const startDate = new Date(customStart);
+                    const payloads = Array.from({ length: customCount }, (_, i) => {
+                      const d = new Date(startDate);
+                      d.setDate(d.getDate() + i);
+                      return {
+                        siswa_id: form.siswa_id as number,
+                        tanggal: toISODateString(d),
+                        subuh: !!form.subuh,
+                        dzuhur: !!form.dzuhur,
+                        ashar: !!form.ashar,
+                        maghrib: !!form.maghrib,
+                        isya: !!form.isya,
+                      };
+                    });
+                    res = await supabase.from('sholat_reports').insert(payloads);
                   } else {
-                    res = await supabase.from('sholat_reports').insert(payload);
+                    // Single create or edit path
+                    if (!form.tanggal) {
+                      setFormError('Tanggal wajib diisi');
+                      setFormLoading(false);
+                      return;
+                    }
+                    const payload = {
+                      siswa_id: form.siswa_id,
+                      tanggal: form.tanggal,
+                      subuh: !!form.subuh,
+                      dzuhur: !!form.dzuhur,
+                      ashar: !!form.ashar,
+                      maghrib: !!form.maghrib,
+                      isya: !!form.isya,
+                    };
+                    if (formEditId) {
+                      res = await supabase.from('sholat_reports').update(payload).eq('id', formEditId);
+                    } else {
+                      res = await supabase.from('sholat_reports').insert(payload);
+                    }
                   }
                   if (res.error) {
                     setFormError(res.error.message);
@@ -291,8 +272,11 @@ export default function AdminDashboard() {
                     setModalOpen(false);
                     setForm({});
                     setFormEditId(null);
+                    setCustomMode(false);
+                    setCustomCount(5);
+                    setCustomStart("");
                     fetchReports();
-                    setNotification({ message: 'Laporan berhasil disimpan!', type: 'success' });
+                    setNotification({ message: formEditId ? 'Laporan berhasil disimpan!' : (customMode ? `Berhasil membuat ${customCount} laporan!` : 'Laporan berhasil disimpan!'), type: 'success' });
                   }
                   setFormLoading(false);
                 }}
@@ -301,7 +285,7 @@ export default function AdminDashboard() {
                 <div>
                   <label className="block font-semibold mb-1">Nama Siswa</label>
                   <select
-                    className="w-full border rounded p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full border rounded p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-neutral-800 dark:border-neutral-700"
                     value={form.siswa_id ?? ''}
                     onChange={e => setForm(f => ({...f, siswa_id: Number(e.target.value)}))}
                     required
@@ -312,22 +296,62 @@ export default function AdminDashboard() {
                     ))}
                   </select>
                 </div>
-                <div>
-                  <label className="block font-semibold mb-1">Tanggal</label>
-                  <input
-                    type="date"
-                    className="w-full border rounded p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    value={form.tanggal ?? ''}
-                    onChange={e => setForm(f => ({...f, tanggal: e.target.value}))}
-                    required
-                  />
-                </div>
+                {/* Custom mode toggle */}
+                {!formEditId && (
+                  <div className="flex items-center gap-2">
+                    <input
+                      id="customMode"
+                      type="checkbox"
+                      className="h-4 w-4"
+                      checked={customMode}
+                      onChange={(e) => setCustomMode(e.target.checked)}
+                    />
+                    <label htmlFor="customMode" className="font-semibold">Buat Laporan Sholat Custom (1–7 hari berturut-turut)</label>
+                  </div>
+                )}
+                {/* Date inputs */}
+                {!customMode && (
+                  <div>
+                    <label className="block font-semibold mb-1">Tanggal</label>
+                    <input
+                      type="date"
+                      className="w-full border rounded p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-neutral-800 dark:border-neutral-700"
+                      value={form.tanggal ?? ''}
+                      onChange={e => setForm(f => ({...f, tanggal: e.target.value}))}
+                      required
+                    />
+                  </div>
+                )}
+                {(!formEditId && customMode) && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block font-semibold mb-1">Tanggal Mulai</label>
+                      <input
+                        type="date"
+                        className="w-full border rounded p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-neutral-800 dark:border-neutral-700"
+                        value={customStart}
+                        onChange={(e) => setCustomStart(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-semibold mb-1">Jumlah Hari (1–7)</label>
+                      <input
+                        type="number"
+                        min={1}
+                        max={7}
+                        className="w-full border rounded p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-neutral-800 dark:border-neutral-700"
+                        value={customCount}
+                        onChange={(e) => setCustomCount(Number(e.target.value))}
+                      />
+                    </div>
+                  </div>
+                )}
                 <div className="flex gap-4 flex-wrap">
                   {SHOLAT_LIST.map(s => (
-                    <label key={s.key} className="flex items-center gap-1 bg-gray-100 px-3 py-2 rounded-md">
+                    <label key={s.key} className="flex items-center gap-1 bg-gray-100 dark:bg-neutral-700 px-3 py-2 rounded-md text-gray-800 dark:text-neutral-100">
                       <input
                         type="checkbox"
-                        className="h-4 w-4 text-blue-600 rounded"
+                        className="h-4 w-4 text-blue-600 rounded dark:border-neutral-600"
                         checked={!!form[s.key as keyof typeof form]}
                         onChange={e => setForm(f => ({...f, [s.key]: e.target.checked}))}
                       />
@@ -335,7 +359,7 @@ export default function AdminDashboard() {
                     </label>
                   ))}
                 </div>
-                {formError && <div className="text-red-600 text-sm text-center py-2">{formError}</div>}
+                {formError && <div className="text-red-600 dark:text-red-400 text-sm text-center py-2">{formError}</div>}
                 <button 
                   type="submit" 
                   className="w-full bg-blue-500 text-white py-2 rounded-md hover:bg-blue-600 transition disabled:opacity-50"
@@ -353,11 +377,11 @@ export default function AdminDashboard() {
             <div className="bg-blue-500 p-2 rounded-lg">
               <Image src="/logo.png" alt="Logo" width={28} height={28} />
             </div>
-            <h1 className="text-2xl font-bold text-gray-800">Admin Dashboard</h1>
+            <h1 className="text-2xl font-bold text-neutral-100">Admin Dashboard</h1>
           </div>
           <div className="flex gap-2 w-full sm:w-auto">
             <button 
-              onClick={()=>{setModalOpen(true);setForm({});setFormEditId(null);}} 
+              onClick={()=>{setModalOpen(true);setForm({});setFormEditId(null);setCustomMode(false);setCustomCount(1);setCustomStart("");}} 
               className="flex items-center gap-1 bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 transition w-full sm:w-auto justify-center"
             >
               <Plus size={16} /> Create
@@ -371,158 +395,55 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-md p-4 mb-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 items-center">
-            <h3 className="font-semibold text-gray-700 lg:col-span-1">Filter Laporan:</h3>
-            <select 
-              onChange={(e) => {
-                setGender(e.target.value);
-                setDate("");
-                setWeek("");
-                setMonth("");
-              }} 
-              value={gender}
-              className="border rounded p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="">Semua Gender</option>
-              <option value="L">Laki-laki</option>
-              <option value="P">Perempuan</option>
-            </select>
-            <input 
-              type="date" 
-              onChange={(e) => {
-                setDate(e.target.value);
-                setWeek("");
-                setMonth("");
-              }} 
-              value={date}
-              className="border rounded p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
-            />
-            <input 
-              type="week" 
-              onChange={(e) => {
-                setWeek(e.target.value);
-                setDate("");
-                setMonth("");
-              }} 
-              value={week}
-              className="border rounded p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
-            />
-            <input 
-              type="month" 
-              onChange={(e) => {
-                setMonth(e.target.value);
-                setDate("");
-                setWeek("");
-              }} 
-              value={month}
-              className="border rounded p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
-            />
-          </div>
-        </div>
+        <FilterBar
+          genderInput={genderInput}
+          setGenderInput={setGenderInput}
+          searchInput={searchInput}
+          setSearchInput={setSearchInput}
+          search={search}
+          setSearch={setSearch}
+          dateInput={dateInput}
+          setDateInput={setDateInput}
+          weekInput={weekInput}
+          setWeekInput={setWeekInput}
+          monthInput={monthInput}
+          setMonthInput={setMonthInput}
+          clearTanggal={clearTanggal}
+        />
 
-        <div className="bg-white rounded-xl shadow-md overflow-hidden">
-          {loading ? (
-            <div className="text-center p-12 text-gray-500">
-              <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500 mb-4"></div>
-              <p>Memuat data...</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm text-left text-gray-500">
-                <thead className="text-xs text-gray-700 uppercase bg-gray-100">
-                  <tr>
-                    <th scope="col" className="px-4 py-3">Tanggal</th>
-                    <th scope="col" className="px-4 py-3">Nama Siswa</th>
-                    <th scope="col" className="px-4 py-3">Gender</th>
-                    {SHOLAT_LIST.map(s => <th key={s.key} scope="col" className="px-4 py-3 text-center">{s.label}</th>)}
-                    <th scope="col" className="px-4 py-3 text-center">Aksi</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {paginatedReports.length > 0 ? paginatedReports.map((report) => (
-                    <tr key={report.id} className="bg-white border-b hover:bg-gray-50">
-                      <td className="px-4 py-3 font-medium text-gray-900">{report.tanggal}</td>
-                      <th scope="row" className="px-4 py-3 font-medium text-gray-900">{report.siswa?.nama}</th>
-                      <td className="px-4 py-3">
-                        <span className={`px-2 py-1 rounded-full text-xs ${report.siswa?.gender === 'L' ? 'bg-blue-100 text-blue-800' : 'bg-pink-100 text-pink-800'}`}>
-                          {report.siswa?.gender === 'L' ? 'Laki-laki' : 'Perempuan'}
-                        </span>
-                      </td>
-                      {SHOLAT_LIST.map(s => (
-                        <td key={s.key} className="px-4 py-3 text-center">
-                          {report[s.key as keyof SholatReport] ? (
-                            <span className="text-green-500 font-bold">✅</span>
-                          ) : (
-                            <span className="text-red-500">❌</span>
-                          )}
-                        </td>
-                      ))}
-                      <td className="px-4 py-3 text-center">
-                        <div className="flex items-center justify-center gap-2">
-                          <button
-                            className="p-1.5 bg-blue-100 text-blue-600 rounded-md hover:bg-blue-200 transition"
-                            onClick={() => {
-                              setModalOpen(true);
-                              setForm({
-                                siswa_id: report.siswa_id,
-                                tanggal: report.tanggal,
-                                subuh: report.subuh,
-                                dzuhur: report.dzuhur,
-                                ashar: report.ashar,
-                                maghrib: report.maghrib,
-                                isya: report.isya,
-                              });
-                              setFormEditId(report.id);
-                            }}
-                          >
-                            <Edit size={16} />
-                          </button>
-                          <button 
-                            className="p-1.5 bg-red-100 text-red-600 rounded-md hover:bg-red-200 transition"
-                            onClick={() => {
-                              setDeleteModalOpen(true);
-                              setDeleteTargetId(report.id);
-                            }}
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  )) : (
-                    <tr>
-                      <td colSpan={SHOLAT_LIST.length + 4} className="text-center p-8 text-gray-500">
-                        Tidak ada data yang cocok dengan filter.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-              {/* Pagination Controls */}
-              <div className="flex flex-col sm:flex-row justify-between items-center gap-2 px-4 py-3 border-t bg-gray-50">
-                <div className="text-sm text-gray-600 mb-2 sm:mb-0">
-                  {totalRows > 0
-                    ? `Menampilkan ${(page-1)*rowsPerPage+1}–${Math.min(page*rowsPerPage, totalRows)} dari ${totalRows} data`
-                    : 'Tidak ada data'}
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    className="px-3 py-1 rounded bg-gray-200 hover:bg-gray-300 disabled:opacity-50"
-                    onClick={() => setPage(p => Math.max(1, p-1))}
-                    disabled={page === 1}
-                  >Sebelumnya</button>
-                  <span className="text-gray-700 px-2">Halaman {page} / {totalPages}</span>
-                  <button
-                    className="px-3 py-1 rounded bg-gray-200 hover:bg-gray-300 disabled:opacity-50"
-                    onClick={() => setPage(p => Math.min(totalPages, p+1))}
-                    disabled={page === totalPages}
-                  >Berikutnya</button>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
+        {loading ? (
+          <div className="text-center p-12 text-neutral-300">
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500 mb-4"></div>
+            <p>Memuat data...</p>
+          </div>
+        ) : (
+          <ReportTable
+            reports={paginatedReports as any}
+            sholatList={SHOLAT_LIST as any}
+            page={page}
+            totalPages={totalPages}
+            rowsPerPage={rowsPerPage}
+            totalRows={totalRows}
+            setPage={(n) => setPage(n)}
+            onEdit={(report) => {
+              setModalOpen(true);
+              setForm({
+                siswa_id: report.siswa_id,
+                tanggal: report.tanggal,
+                subuh: report.subuh,
+                dzuhur: report.dzuhur,
+                ashar: report.ashar,
+                maghrib: report.maghrib,
+                isya: report.isya,
+              });
+              setFormEditId(report.id);
+            }}
+            onDelete={(report) => {
+              setDeleteModalOpen(true);
+              setDeleteTargetId(report.id);
+            }}
+          />
+        )}
       </div>
     </div>
   );

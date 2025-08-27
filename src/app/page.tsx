@@ -25,6 +25,8 @@ export default function Home() {
   const [sholatReport, setSholatReport] = useState<Partial<SholatReport>>({});
   const [notification, setNotification] = useState<{message: string, type: 'success' | 'error'} | null>(null);
   const [fetchingReport, setFetchingReport] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [history, setHistory] = useState<{ tanggal: string; report?: SholatReport }[]>([]);
 
   const sholatTimes: { key: SholatKeys; label: string }[] = [
 
@@ -53,7 +55,7 @@ export default function Home() {
     }
   }, [notification]);
 
-  // Remember selected siswa in localStorage, fetch report when selectedSiswa changes
+  // Remember selected siswa in localStorage, fetch today's report and 7-day history when selectedSiswa changes
   useEffect(() => {
     const checkSubmission = async (siswaId: number) => {
       setFetchingReport(true);
@@ -73,13 +75,39 @@ export default function Home() {
       }
       setFetchingReport(false);
     };
+    const fetchHistory = async (siswaId: number) => {
+      setHistoryLoading(true);
+      const today = new Date();
+      const start = new Date();
+      start.setDate(today.getDate() - 6);
+      const todayStr = toISODateString(today);
+      const startStr = toISODateString(start);
+      const { data } = await supabase
+        .from("sholat_reports")
+        .select("*")
+        .eq("siswa_id", siswaId)
+        .gte("tanggal", startStr)
+        .lte("tanggal", todayStr)
+        .order("tanggal", { ascending: false });
+      const list = Array.from({ length: 7 }, (_, i) => {
+        const d = new Date();
+        d.setDate(today.getDate() - i);
+        return toISODateString(d);
+      });
+      const mapByDate = new Map((data || []).map(r => [r.tanggal, r as SholatReport]));
+      setHistory(list.map(tgl => ({ tanggal: tgl, report: mapByDate.get(tgl) })));
+      setHistoryLoading(false);
+    };
 
     if (selectedSiswa) {
       localStorage.setItem('selectedSiswa', selectedSiswa);
-      checkSubmission(parseInt(selectedSiswa));
+      const siswaId = parseInt(selectedSiswa);
+      checkSubmission(siswaId);
+      fetchHistory(siswaId);
     } else {
       setIsSubmitted(false);
       setSholatReport({});
+      setHistory([]);
     }
   }, [selectedSiswa]);
 
@@ -142,78 +170,174 @@ export default function Home() {
   };
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-4 sm:p-8 md:p-12 bg-gray-50">
-      {notification && (
-        <div className={`fixed top-5 right-5 p-4 rounded-md text-white z-50 ${notification.type === 'success' ? 'bg-green-500' : 'bg-red-500'} animate-fade-in-fast`}>
-          {notification.message}
+  <main className="flex min-h-screen flex-col items-center justify-center p-4 sm:p-8 md:p-12 bg-neutral-900 text-neutral-100">
+    {notification && (
+      <div
+        className={`fixed top-5 right-5 p-4 rounded-md text-white z-50 ${
+          notification.type === "success" ? "bg-green-600" : "bg-red-600"
+        } animate-fade-in-fast`}
+      >
+        {notification.message}
+      </div>
+    )}
+
+    <div className="w-full max-w-2xl mx-auto">
+      <div className="text-center mb-8">
+        <Image
+          src="/logo.png"
+          alt="Logo"
+          width={60}
+          height={60}
+          className="mx-auto mb-4"
+        />
+        <h1 className="text-3xl font-bold">Laporan Sholat Harian</h1>
+        <p className="text-neutral-400 mt-2">
+          Silakan isi laporan sholat wajib harian Anda.
+        </p>
+      </div>
+
+      {/* Card rules */}
+      <div className="mb-6 rounded-xl bg-neutral-800 p-4 shadow-md">
+        <h2 className="font-semibold text-lg mb-2">Perhatian & Aturan</h2>
+        <ul className="list-disc list-inside text-neutral-400 space-y-1">
+          <li>
+            Laporan hanya bisa diisi <span className="font-semibold">satu kali</span> setiap hari.
+          </li>
+          <li>
+            Jika sudah mengirim, Anda masih bisa{" "}
+            <span className="font-semibold">mengubah</span> laporan di hari yang sama.
+          </li>
+          <li>Pilih nama Anda, lalu centang sholat yang sudah dilaksanakan.</li>
+          <li>Klik tombol &quot;Kirim Laporan&quot; untuk menyimpan.</li>
+        </ul>
+      </div>
+
+      {/* History */}
+      {fetchingReport && selectedSiswa && (
+        <div className="w-full flex justify-center items-center mb-4">
+          <span className="text-blue-400 text-sm">Mengambil data laporan...</span>
         </div>
       )}
 
-      <div className="w-full max-w-2xl mx-auto">
-        <div className="text-center mb-8">
-          <Image src="/logo.png" alt="Logo" width={60} height={60} className="mx-auto mb-4" />
-          <h1 className="text-3xl font-bold text-gray-800">Laporan Sholat Harian</h1>
-          <p className="text-gray-500 mt-2">Silakan isi laporan sholat wajib harian Anda.</p>
+      {selectedSiswa && (
+        <div className="mb-6 rounded-xl bg-neutral-800 p-4 shadow-md">
+          <h2 className="font-semibold text-lg mb-2">Riwayat 7 Hari Terakhir</h2>
+          {historyLoading ? (
+            <p className="text-neutral-400 text-sm">Memuat riwayat...</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-left text-neutral-300">
+                <thead className="text-xs uppercase bg-neutral-700 text-neutral-200">
+                  <tr>
+                    <th className="px-3 py-2">Tanggal</th>
+                    {sholatTimes.map(({ key, label }) => (
+                      <th key={key} className="px-3 py-2 text-center">
+                        {label}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {history.map(({ tanggal, report }) => (
+                    <tr
+                      key={tanggal}
+                      className="border-b border-neutral-700 hover:bg-neutral-700/40"
+                    >
+                      <td className="px-3 py-2 font-medium">{tanggal}</td>
+                      {sholatTimes.map(({ key }) => (
+                        <td key={key} className="px-3 py-2 text-center">
+                          {report ? (
+                            report[key] ? (
+                              <span className="text-green-400">✅</span>
+                            ) : (
+                              <span className="text-red-500">❌</span>
+                            )
+                          ) : (
+                            <span className="text-neutral-600">—</span>
+                          )}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          <p className="text-sm text-neutral-400 italic mt-3">
+            * jika ada yang terlewat, hubungi admin
+          </p>
+        </div>
+      )}
+
+      {/* Form */}
+      <form onSubmit={handleSubmit} className="rounded-xl bg-neutral-800 p-4 shadow-md">
+        <div className="mb-6 text-neutral-300">
+          <label
+            htmlFor="siswa"
+            className="block text-sm font-medium text-neutral-200 mb-2"
+          >
+            Nama Lengkap
+          </label>
+          <select
+            id="siswa"
+            value={selectedSiswa}
+            onChange={(e) => setSelectedSiswa(e.target.value)}
+            className="w-full border border-neutral-700 rounded-md px-3 py-2 bg-neutral-900 text-neutral-100 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-neutral-800"
+            disabled={isSubmitted}
+          >
+            <option value="" disabled>
+              -- Pilih Nama --
+            </option>
+            {siswaOptions.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.nama}
+              </option>
+            ))}
+          </select>
+          {isSubmitted && (
+            <p className="text-sm text-blue-400 mt-2">
+              Anda sudah mengirim laporan hari ini. Anda hanya bisa mengedit.
+            </p>
+          )}
         </div>
 
-        <div className="card mb-6">
-          <h2 className="font-semibold text-lg text-gray-700 mb-2">Perhatian & Aturan</h2>
-          <ul className="list-disc list-inside text-gray-600 space-y-1">
-            <li>Laporan hanya bisa diisi <span className="font-semibold">satu kali</span> setiap hari.</li>
-            <li>Jika sudah mengirim, Anda masih bisa <span className="font-semibold">mengubah</span> laporan di hari yang sama.</li>
-            <li>Pilih nama Anda, lalu centang sholat yang sudah dilaksanakan.</li>
-            <li>Klik tombol &quot;Kirim Laporan&quot; untuk menyimpan.</li>
-          </ul>
-        </div>
-
-        {fetchingReport && selectedSiswa && (
-          <div className="w-full flex justify-center items-center mb-4">
-            <span className="text-blue-500 text-sm">Mengambil data laporan...</span>
+        {selectedSiswa && (
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-neutral-200 mb-3">
+              Sholat yang Dilaksanakan
+            </label>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+              {sholatTimes.map(({ key, label }) => (
+                <label
+                  key={key}
+                  className="flex items-center gap-2 text-neutral-200 cursor-pointer"
+                >
+                  <input
+                    type="checkbox"
+                    checked={getSholatValue(key)}
+                    onChange={() => handleCheckboxChange(key)}
+                    className="h-5 w-5 rounded border-neutral-600 bg-neutral-900 text-blue-500 focus:ring-blue-500"
+                  />
+                  {label}
+                </label>
+              ))}
+            </div>
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="card">
-          <div className="mb-6">
-            <label htmlFor="siswa" className="block text-sm font-medium text-gray-700 mb-2">Nama Lengkap</label>
-            <select
-              id="siswa"
-              value={selectedSiswa}
-              onChange={(e) => setSelectedSiswa(e.target.value)}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
-              disabled={isSubmitted}
-            >
-              <option value="" disabled>-- Pilih Nama --</option>
-              {siswaOptions.map((s) => (
-                <option key={s.id} value={s.id}>{s.nama}</option>
-              ))}
-            </select>
-            {isSubmitted && <p className="text-sm text-blue-600 mt-2">Anda sudah mengirim laporan hari ini. Anda hanya bisa mengedit.</p>}
-          </div>
-
-          {selectedSiswa && (
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-3">Sholat yang Dilaksanakan</label>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
-                {sholatTimes.map(({ key, label }) => (
-                  <label key={key} className="flex items-center gap-2 text-gray-700 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={getSholatValue(key)}
-                      onChange={() => handleCheckboxChange(key)}
-                      className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                    />
-                    {label}
-                  </label>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <button type="submit" className="button w-full" disabled={loading || !selectedSiswa}>
-            {loading ? 'Menyimpan...' : (isSubmitted ? 'Update Laporan' : 'Kirim Laporan')}
-          </button>
-        </form>
-      </div>
-    </main>
+        <button
+          type="submit"
+          className="w-full rounded-md bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2 transition disabled:bg-neutral-600"
+          disabled={loading || !selectedSiswa}
+        >
+          {loading
+            ? "Menyimpan..."
+            : isSubmitted
+            ? "Update Laporan"
+            : "Kirim Laporan"}
+        </button>
+      </form>
+    </div>
+  </main>
   );
 }
