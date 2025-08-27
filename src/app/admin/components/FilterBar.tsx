@@ -53,7 +53,7 @@ export default function FilterBar({
             placeholder="Cari nama siswa..."
             onChange={(e) => setSearchInput(e.target.value)}
             value={searchInput}
-            className="border rounded p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full dark:bg-neutral-800 dark:border-neutral-700"
+            className="border rounded p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full text-neutral-900 placeholder-gray-500 dark:bg-neutral-800 dark:border-neutral-700 dark:text-neutral-200 dark:placeholder-neutral-400"
           />
           {search || searchInput ? (
             <button
@@ -78,7 +78,7 @@ export default function FilterBar({
             setMonthInput("");
           }}
           value={dateInput}
-          className="border rounded p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-neutral-800 dark:border-neutral-700"
+          className="border rounded p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-neutral-900 placeholder-gray-500 dark:bg-neutral-800 dark:border-neutral-700 dark:text-neutral-200 dark:placeholder-neutral-400"
         />
         <input
           type="week"
@@ -89,7 +89,7 @@ export default function FilterBar({
             setMonthInput("");
           }}
           value={weekInput}
-          className="border rounded p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-neutral-800 dark:border-neutral-700"
+          className="border rounded p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-neutral-900 placeholder-gray-500 dark:bg-neutral-800 dark:border-neutral-700 dark:text-neutral-200 dark:placeholder-neutral-400"
         />
         <input
           type="month"
@@ -100,7 +100,7 @@ export default function FilterBar({
             setWeekInput("");
           }}
           value={monthInput}
-          className="border rounded p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-neutral-800 dark:border-neutral-700"
+          className="border rounded p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-neutral-900 placeholder-gray-500 dark:bg-neutral-800 dark:border-neutral-700 dark:text-neutral-200 dark:placeholder-neutral-400"
         />
         <button
           type="button"

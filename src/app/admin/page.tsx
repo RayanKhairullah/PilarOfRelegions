@@ -377,7 +377,7 @@ export default function AdminDashboard() {
             <div className="bg-blue-500 p-2 rounded-lg">
               <Image src="/logo.png" alt="Logo" width={28} height={28} />
             </div>
-            <h1 className="text-2xl font-bold text-neutral-100">Admin Dashboard</h1>
+            <h1 className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">Admin Dashboard</h1>
           </div>
           <div className="flex gap-2 w-full sm:w-auto">
             <button 
