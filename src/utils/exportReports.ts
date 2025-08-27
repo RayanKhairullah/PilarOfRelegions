@@ -1,5 +1,11 @@
+<<<<<<< HEAD
 import { utils, WorkBook } from 'xlsx-js-style';
 import { getMonthRange, getWeekRange } from './date';
+=======
+import { utils, WorkBook, WorkSheet } from 'xlsx-js-style';
+import { getMonthRange, getWeekRange } from './date';
+import { SholatReport } from '@/types/sholat';
+>>>>>>> 5935af4 (sholats app v2 + fix eslint)
 
 interface Filters {
   gender: string;
@@ -8,7 +14,35 @@ interface Filters {
   month: string;
 }
 
+<<<<<<< HEAD
 export function buildExportWorkbook(params: { exportReports: any[]; filters: Filters }): { wb: WorkBook; filename: string } {
+=======
+interface StudentAggregateData {
+  Nama: string;
+  Gender: string;
+  Subuh: number;
+  Dzuhur: number;
+  Ashar: number;
+  Maghrib: number;
+  Isya: number;
+}
+
+interface ExportRowData {
+  Nama: string;
+  Gender: string;
+  Tanggal?: string;
+  Subuh: string | number;
+  Dzuhur: string | number;
+  Ashar: string | number;
+  Maghrib: string | number;
+  Isya: string | number;
+  'Total Normal Terlaksanakan': number;
+  'Total Terlaksanakan': number;
+  'Total Tidak Terlaksanakan': number;
+}
+
+export function buildExportWorkbook(params: { exportReports: SholatReport[]; filters: Filters }): { wb: WorkBook; filename: string } {
+>>>>>>> 5935af4 (sholats app v2 + fix eslint)
   const { exportReports, filters } = params;
   const { gender, date, week, month } = filters;
 
@@ -40,18 +74,30 @@ export function buildExportWorkbook(params: { exportReports: any[]; filters: Fil
   }
   const normalExpected = daysCount > 0 ? daysCount * expectedPerDay : expectedPerDay;
 
+<<<<<<< HEAD
   let exportData: any[] = [];
 
   if (week || month) {
     // Aggregate per student
     const studentMap = new Map<string, any>();
+=======
+  let exportData: ExportRowData[] = [];
+
+  if (week || month) {
+    // Aggregate per student
+    const studentMap = new Map<string, StudentAggregateData>();
+>>>>>>> 5935af4 (sholats app v2 + fix eslint)
     (exportReports || [])
       .filter((r) => r.siswa)
       .forEach((r) => {
         const key = `${r.siswa_id}-${r.siswa?.nama}`;
         if (!studentMap.has(key)) {
           studentMap.set(key, {
+<<<<<<< HEAD
             Nama: r.siswa?.nama,
+=======
+            Nama: r.siswa?.nama || 'Unknown',
+>>>>>>> 5935af4 (sholats app v2 + fix eslint)
             Gender: r.siswa?.gender === 'L' ? 'Laki-laki' : 'Perempuan',
             Subuh: 0,
             Dzuhur: 0,
@@ -61,11 +107,21 @@ export function buildExportWorkbook(params: { exportReports: any[]; filters: Fil
           });
         }
         const student = studentMap.get(key);
+<<<<<<< HEAD
         student['Subuh'] += r.subuh ? 1 : 0;
         student['Dzuhur'] += r.dzuhur ? 1 : 0;
         student['Ashar'] += r.ashar ? 1 : 0;
         student['Maghrib'] += r.maghrib ? 1 : 0;
         student['Isya'] += r.isya ? 1 : 0;
+=======
+        if (student) {
+          student['Subuh'] += r.subuh ? 1 : 0;
+          student['Dzuhur'] += r.dzuhur ? 1 : 0;
+          student['Ashar'] += r.ashar ? 1 : 0;
+          student['Maghrib'] += r.maghrib ? 1 : 0;
+          student['Isya'] += r.isya ? 1 : 0;
+        }
+>>>>>>> 5935af4 (sholats app v2 + fix eslint)
       });
 
     exportData = Array.from(studentMap.values()).map((s) => {
@@ -90,7 +146,11 @@ export function buildExportWorkbook(params: { exportReports: any[]; filters: Fil
         const totalTrue = [subuh, dzuhur, ashar, maghrib, isya].filter(Boolean).length;
         const totalFalse = expectedPerDay - totalTrue;
         return {
+<<<<<<< HEAD
           Nama: r.siswa?.nama,
+=======
+          Nama: r.siswa?.nama || 'Unknown',
+>>>>>>> 5935af4 (sholats app v2 + fix eslint)
           Gender: r.siswa?.gender === 'L' ? 'Laki-laki' : 'Perempuan',
           Tanggal: r.tanggal,
           Subuh: subuh ? 'TRUE' : 'FALSE',
@@ -159,7 +219,11 @@ export function buildExportWorkbook(params: { exportReports: any[]; filters: Fil
   const headerRow = keys.map((key) => ({ v: key, t: 's', s: headerStyle }));
   const dataRows = exportData.map((row) =>
     keys.map((key) => {
+<<<<<<< HEAD
       const value = (row as any)[key];
+=======
+      const value = row[key as keyof ExportRowData];
+>>>>>>> 5935af4 (sholats app v2 + fix eslint)
       const isNumber = typeof value === 'number';
       return { v: value, t: isNumber ? 'n' : 's', s: dataStyle };
     })
@@ -168,9 +232,15 @@ export function buildExportWorkbook(params: { exportReports: any[]; filters: Fil
 
   const wb = utils.book_new();
   const ws = utils.aoa_to_sheet(wsData);
+<<<<<<< HEAD
   if (!ws['!merges']) ws['!merges'] = [] as any;
   (ws['!merges'] as any[]).push({ s: { r: 0, c: 0 }, e: { r: 0, c: Math.max(keys.length - 1, 0) } });
   (ws['!merges'] as any[]).push({ s: { r: 1, c: 0 }, e: { r: 1, c: Math.max(keys.length - 1, 0) } });
+=======
+  if (!ws['!merges']) ws['!merges'] = [];
+  ws['!merges'].push({ s: { r: 0, c: 0 }, e: { r: 0, c: Math.max(keys.length - 1, 0) } });
+  ws['!merges'].push({ s: { r: 1, c: 0 }, e: { r: 1, c: Math.max(keys.length - 1, 0) } });
+>>>>>>> 5935af4 (sholats app v2 + fix eslint)
 
   const colWidths = keys.map((key) => {
     if (key === 'Nama') return { wch: 25 };
@@ -178,7 +248,11 @@ export function buildExportWorkbook(params: { exportReports: any[]; filters: Fil
     if (key === 'Tanggal') return { wch: 15 };
     return { wch: 12 };
   });
+<<<<<<< HEAD
   (ws as any)['!cols'] = colWidths;
+=======
+  (ws as WorkSheet & { '!cols': typeof colWidths })['!cols'] = colWidths;
+>>>>>>> 5935af4 (sholats app v2 + fix eslint)
 
   utils.book_append_sheet(wb, ws, 'Laporan Sholat');
 

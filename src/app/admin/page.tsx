@@ -4,7 +4,7 @@ import { supabase } from "@/utils/supabaseClient";
 import { SholatReport, Siswa } from "@/types/sholat";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { Plus, Download, Edit, Trash2 } from 'lucide-react';
+import { Plus, Download } from 'lucide-react';
 import { writeFile } from 'xlsx-js-style';
 import { toISODateString, getWeekRange, getMonthRange } from "@/utils/date";
 import { buildExportWorkbook } from "@/utils/exportReports";
@@ -151,7 +151,7 @@ export default function AdminDashboard() {
     { key: 'ashar', label: 'Ashar' },
     { key: 'maghrib', label: 'Maghrib' },
     { key: 'isya', label: 'Isya' },
-  ];
+  ] as { key: keyof SholatReport; label: string }[];
 
   // Pagination state
   const [page, setPage] = useState(1);
@@ -418,8 +418,13 @@ export default function AdminDashboard() {
           </div>
         ) : (
           <ReportTable
+<<<<<<< HEAD
             reports={paginatedReports as any}
             sholatList={SHOLAT_LIST as any}
+=======
+            reports={paginatedReports}
+            sholatList={SHOLAT_LIST}
+>>>>>>> 5935af4 (sholats app v2 + fix eslint)
             page={page}
             totalPages={totalPages}
             rowsPerPage={rowsPerPage}
