@@ -418,13 +418,8 @@ export default function AdminDashboard() {
           </div>
         ) : (
           <ReportTable
-<<<<<<< HEAD
-            reports={paginatedReports as any}
-            sholatList={SHOLAT_LIST as any}
-=======
             reports={paginatedReports}
             sholatList={SHOLAT_LIST}
->>>>>>> 5935af4 (sholats app v2 + fix eslint)
             page={page}
             totalPages={totalPages}
             rowsPerPage={rowsPerPage}
